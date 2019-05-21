@@ -74,7 +74,7 @@ DiskStore.prototype.set = wrapCallback(async function (key, val, options) {
 
     try {
         await this._lock(filePath);
-        await jsonFileStore.write(filePath, data);
+        await jsonFileStore.write(filePath, data, this.options);
     } catch (err) {
         throw err;
     } finally {
@@ -143,7 +143,7 @@ DiskStore.prototype.del = wrapCallback(async function (key) {
         }
 
         await this._lock(filePath);
-        await jsonFileStore.delete(filePath);
+        await jsonFileStore.delete(filePath, this.options);
     } catch (err) {
         //ignore deleting non existing keys
         if (err.code !== 'ENOENT') {
