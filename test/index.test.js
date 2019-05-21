@@ -5,7 +5,11 @@ const store = require('../index.js');
 const cacheDirectory = __dirname + '/cache';
 
 function countFilesInCacheDir() {
-    return fs.readdirSync(cacheDirectory).length;
+	return fs.readdirSync(cacheDirectory).filter(f => f != 'meta.json').length;
+}
+
+async function wait(msecs) {
+	await new Promise((resolve) => setTimeout(resolve, msecs));
 }
 
 describe('DiskStore', function () {
@@ -249,6 +253,40 @@ describe('DiskStore', function () {
                 }
             }
         });
+
+		it('should refuse to set a value over the maxsize', async function() {
+			// Create a new cache with the maxSize option
+            const cache = store.create({path: cacheDirectory, maxsize: 100});
+			const longString = 'a'.repeat(101);
+			try {
+				await cache.set('test-key', longString);
+				assert.fail('set call should not have succeeded');
+			} catch (e) {
+				assert.ok(/not setting/.test(e.message));
+			}
+		});
+
+		it('should delete older values when over the maxsize', async function() {
+			// Create a new cache with the maxSize option
+			const cache = store.create({path: cacheDirectory, maxsize: 200});
+			const longString = 'a'.repeat(10);
+
+			await cache.set('test-key-1', longString);
+			await cache.set('test-key-2', longString);
+			await cache.set('test-key-3', longString);
+			await cache.set('test-key-4', longString);
+			await cache.set('test-key-5', longString);
+			await cache.set('test-key-6', longString);
+
+            assert.strictEqual(3, countFilesInCacheDir());
+
+            assert.strictEqual(undefined, await cache.get('test-key-1'));
+            assert.strictEqual(undefined, await cache.get('test-key-2'));
+            assert.strictEqual(undefined, await cache.get('test-key-3'));
+            assert.strictEqual(longString, await cache.get('test-key-4'));
+            assert.strictEqual(longString, await cache.get('test-key-5'));
+            assert.strictEqual(longString, await cache.get('test-key-6'));
+		});
 
     });
 
